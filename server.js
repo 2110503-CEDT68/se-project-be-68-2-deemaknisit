@@ -17,6 +17,7 @@ const authRoutes = require('./routes/auth');
 const providerRoutes = require('./routes/provider');
 const carRoutes = require('./routes/car');
 const bookingRoutes = require('./routes/booking');
+const reviewRoutes = require('./routes/review');
 
 setServers(["1.1.1.1", "8.8.8.8"]);               // Set DNS servers
 dotenv.config({ path: './config/config.env' });   // Load env vars
@@ -49,6 +50,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 const PORT = process.env.PORT || 5000;
 
