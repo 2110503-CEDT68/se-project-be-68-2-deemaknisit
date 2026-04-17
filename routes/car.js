@@ -6,6 +6,7 @@ const {
     updateCar,
     deleteCar
 } = require('../controllers/car');
+const { getReviews } = require('../controllers/review');
 
 // Include other resource routers
 const bookingRouter = require('./booking');
@@ -23,6 +24,7 @@ const { protect, authorize } = require('../middleware/auth');
 
 // Re-route into other resource routers
 router.use('/:carId/bookings', bookingRouter);
+router.route('/:carId/reviews').get(getReviews);
 
 /**
  * @swagger

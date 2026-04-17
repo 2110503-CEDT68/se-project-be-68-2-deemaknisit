@@ -17,6 +17,9 @@ exports.getBookings = async (req, res, next) => {
                 path: 'provider',
                 select: 'name address tel'
             }
+        }).populate({
+            path: 'review',
+            select: 'rating comment'
         });
     } else {
         // Admins can see all bookings
@@ -28,6 +31,9 @@ exports.getBookings = async (req, res, next) => {
                     path: 'provider',
                     select: 'name address tel'
                 }
+            }).populate({
+                path: 'review',
+                select: 'rating comment'
             });
         } else if (req.params.providerId) {
             query = Booking.find({ provider: req.params.providerId }).populate({
@@ -37,6 +43,9 @@ exports.getBookings = async (req, res, next) => {
                     path: 'provider',
                     select: 'name address tel'
                 }
+            }).populate({
+                path: 'review',
+                select: 'rating comment'
             });
         } else {
             query = Booking.find().populate({
@@ -46,7 +55,10 @@ exports.getBookings = async (req, res, next) => {
                     path: 'provider',
                     select: 'name address tel'
                 }
-            }).populate('user', 'name email');
+            }).populate('user', 'name email').populate({
+                path: 'review',
+                select: 'rating comment'
+            });
         }
     }
 
@@ -74,6 +86,9 @@ exports.getBooking = async (req, res, next) => {
                 path: 'provider',
                 select: 'name address tel'
             }
+        }).populate({
+            path: 'review',
+            select: 'rating comment'
         });
 
         if (!booking) {

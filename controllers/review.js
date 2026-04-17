@@ -3,7 +3,7 @@ const Review = require('../models/Review');
 const Booking = require('../models/Booking');
 
 // @desc    Add review
-// @route   POST /api/v1/reviews
+// @route   POST /api/reviews
 // @access  Private
 exports.addReview = async (req, res, next) => {
     try {
@@ -51,12 +51,43 @@ exports.addReview = async (req, res, next) => {
     }
 };
 
-// @desc    Get reviews for current user
-// @route   GET /api/v1/reviews/me
-// @access  Private
-exports.getMyReviews = async (req, res, next) => {
+// @desc    Get reviews
+// @route   GET /api/reviews
+// @route   GET /api/cars/:carId/reviews
+// @access  Private for /api/reviews, Public for /api/cars/:carId/reviews
+exports.getReviews = async (req, res, next) => {
     try {
-        const reviews = await Review.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        const carId = req.params.carId;
+
+        if (carId) {
+            if (!mongoose.Types.ObjectId.isValid(carId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid car id'
+                });
+            }
+
+            const bookings = await Booking.find({ car: carId }).select('_id');
+            const bookingIds = bookings.map((booking) => booking._id);
+            const reviews = await Review.find({ bookingId: { $in: bookingIds } })
+                .sort({ createdAt: -1 });
+
+            return res.status(200).json({
+                success: true,
+                count: reviews.length,
+                data: reviews
+            });
+        }
+
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Not authorized to view reviews'
+            });
+        }
+
+        const query = req.user.role === 'admin' ? {} : { userId: req.user.id };
+        const reviews = await Review.find(query).sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,
@@ -71,8 +102,50 @@ exports.getMyReviews = async (req, res, next) => {
     }
 };
 
+// @desc    Get review by id
+// @route   GET /api/reviews/:reviewId
+// @access  Private
+exports.getReviewById = async (req, res, next) => {
+    try {
+        const { reviewId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid review id'
+            });
+        }
+
+        const review = await Review.findById(reviewId);
+
+        if (!review) {
+            return res.status(404).json({
+                success: false,
+                message: `No review with the id of ${reviewId}`
+            });
+        }
+
+        if (review.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: `User ${req.user.id} is not authorized to view this review`
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: review
+        });
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error'
+        });
+    }
+};
+
 // @desc    Update review
-// @route   PUT /api/v1/reviews/:reviewId
+// @route   PUT /api/reviews/:reviewId
 // @access  Private
 exports.updateReview = async (req, res, next) => {
     try {
