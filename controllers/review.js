@@ -8,6 +8,13 @@ const Booking = require('../models/Booking');
 exports.addReview = async (req, res, next) => {
     try {
         const { bookingId, rating, comment } = req.body;
+        
+        if (!comment || comment.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'require your comment'
+            });
+        }
 
         // Check if booking exists
         const booking = await Booking.findById(bookingId);
@@ -172,6 +179,13 @@ exports.updateReview = async (req, res, next) => {
             return res.status(400).json({
                 success: false,
                 message: `Invalid fields in update request: ${invalidFields.join(', ')}`
+            });
+        }
+
+        if (req.body.comment !== undefined && (req.body.comment === null || req.body.comment.trim() === '')) {
+            return res.status(400).json({
+                success: false,
+                message: 'require your comment'
             });
         }
 
