@@ -217,3 +217,47 @@ exports.updateReview = async (req, res, next) => {
         });
     }
 };
+
+// @desc    Delete review
+// @route   DELETE /api/reviews/:reviewId
+// @access  Private
+exports.deleteReview = async (req, res, next) => {
+    try {
+        const { reviewId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid review id'
+            });
+        }
+
+        const review = await Review.findById(reviewId);
+
+        if (!review) {
+            return res.status(404).json({
+                success: false,
+                message: `No review with the id of ${reviewId}`
+            });
+        }
+
+        if (review.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: `User ${req.user.id} is not authorized to delete this review`
+            });
+        }
+
+        await Review.findByIdAndDelete(reviewId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Review deleted successfully'
+        });
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error'
+        });
+    }
+};
