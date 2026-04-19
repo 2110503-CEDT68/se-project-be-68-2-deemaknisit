@@ -112,6 +112,10 @@ exports.getReviews = async (req, res, next) => {
                 path: 'providerId',
                 select: 'name'
             })
+            .populate({
+                path: 'userId',
+                select: 'name'
+            })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
