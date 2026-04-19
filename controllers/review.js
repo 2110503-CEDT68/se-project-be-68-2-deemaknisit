@@ -82,18 +82,19 @@ exports.getReviews = async (req, res, next) => {
         } 
         // 2. Personal or All reviews (GET /api/reviews)
         else {
-            if (!req.user) {
+            // Allow public access to all reviews
+            if (req.query.all === 'true') {
+                query = {};
+            } else if (!req.user) {
                 return res.status(401).json({
                     success: false,
                     message: 'Not authorized to view reviews'
                 });
-            }
-
-            // Check if admin wants all reviews or just their own
-            if (req.user.role === 'admin' && req.query.all === 'true') {
+            } else if (req.user.role === 'admin') {
+                // Admin can view all reviews
                 query = {};
             } else {
-                // Default to personal reviews for both users and admins (unless admin specifies all=true)
+                // Default to personal reviews for regular users
                 query = { userId: req.user.id };
             }
         }
