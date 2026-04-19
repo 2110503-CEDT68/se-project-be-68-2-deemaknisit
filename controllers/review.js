@@ -105,8 +105,12 @@ exports.getReviews = async (req, res, next) => {
                 select: 'car',
                 populate: {
                     path: 'car',
-                    select: 'brand model licensePlate'
+                    select: 'brand model licensePlate picture'
                 }
+            })
+            .populate({
+                path: 'providerId',
+                select: 'name'
             })
             .sort({ createdAt: -1 });
 
