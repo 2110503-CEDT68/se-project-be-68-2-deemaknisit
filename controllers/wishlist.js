@@ -58,12 +58,49 @@ exports.addWishlistItem = async (req, res, next) => {
     }
 };
 
-exports.getWishlist = async (req, res) => {
+exports.getWishlist = async (req, res, next) => {
     try {
-        const wishlist = await Wishlist.find({ user: req.user.id}).populate('car');
+        const wishlist = await Wishlist.find({ userId: req.user.id }).populate('providerId');
 
-        res.status(200).json({ success: true, data: wishlist });
-    } catch(err){
-        res.status(500).json({success: false, msg: 'Server error'});
+        res.status(200).json({
+            success: true,
+            count: wishlist.length,
+            data: wishlist
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Delete wishlist item
+// @route   DELETE /api/wishlist/:id
+// @access  Private
+exports.deleteWishlistItem = async (req, res, next) => {
+    try {
+        const wishlistItem = await Wishlist.findById(req.params.id);
+
+        if (!wishlistItem) {
+            return res.status(404).json({
+                success: false,
+                message: `No wishlist item with the id of ${req.params.id}`
+            });
+        }
+
+        // Make sure user is wishlist item owner or admin
+        if (wishlistItem.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(401).json({
+                success: false,
+                message: `User ${req.user.id} is not authorized to delete this wishlist item`
+            });
+        }
+
+        await wishlistItem.deleteOne();
+
+        res.status(200).json({
+            success: true,
+            data: {}
+        });
+    } catch (err) {
+        next(err);
     }
 };
