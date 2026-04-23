@@ -57,3 +57,13 @@ exports.addWishlistItem = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.getWishlist = async (req, res) => {
+    try {
+        const wishlist = await Wishlist.find({ user: req.user.id}).populate('car');
+
+        res.status(200).json({ success: true, data: wishlist });
+    } catch(err){
+        res.status(500).json({success: false, msg: 'Server error'});
+    }
+};
