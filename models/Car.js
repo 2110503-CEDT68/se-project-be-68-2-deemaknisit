@@ -64,4 +64,11 @@ const carSchema = new mongoose.Schema({
     timestamps: true
 });
 
+carSchema.virtual('isWishlisted', {
+    ref: 'Wishlist',
+    localField: '_id',
+    foreignField: 'carId',
+    justOne: true
+});
+
 module.exports = mongoose.model('Car', carSchema);
