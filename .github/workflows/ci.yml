@@ -156,15 +156,15 @@ jobs:
           docker push $FULL:${{ github.sha }}
           docker push $FULL:latest
 
-  # STEP 3: Deploy
-  deploy:
-    name: Send Deployment signal
-    runs-on: ubuntu-latest
-    needs: docker-build-publish
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Send Webhook
-        run: |
-          curl -X POST \
-          -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}" \
-          "${{ secrets.WEBHOOK_URL }}"
+  # # STEP 3: Deploy
+  # deploy:
+  #   name: Send Deployment signal
+  #   runs-on: ubuntu-latest
+  #   needs: docker-build-publish
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: Send Webhook
+  #       run: |
+  #         curl -X POST \
+  #         -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}" \
+  #         "${{ secrets.WEBHOOK_URL }}"
