@@ -1,0 +1,166 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+  pull-requests: write
+  security-events: write
+  actions: read
+
+env:
+  IMAGE_NAME: se-project-be-68-2-deemaknisit
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+jobs:
+  # STEP 1: Basic Tests
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test
+
+  # GATE#0: Secret scanning
+  secret-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # GATE#1: SAST (SonarQube & CodeQL)
+  sast-scan:
+    runs-on: ubuntu-latest
+    needs: secret-scanning
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v3.1.0
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  codeql-scan:
+    runs-on: ubuntu-latest
+    needs: secret-scanning
+    if: ${{ !cancelled() }}
+    strategy:
+      matrix:
+        language: [ 'javascript' ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # GATE#2: Dependency scanning
+  dependency-scanning:
+    runs-on: ubuntu-latest
+    needs: [sast-scan, test]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: Depcheck
+        uses: dependency-check/Dependency-Check_Action@main
+        continue-on-error: true
+        id: Depcheck
+        with:
+          project: 'CarRentalSystem'
+          path: '.'
+          format: 'sarif'
+          out: 'reports'
+          args: '--failOnCVSS 7.0 --enableRetired'
+      - name: Upload Depcheck SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/dependency-check-report.sarif
+          category: dependency-check
+
+  # STEP 2 & GATE#3: Docker Build, Publish & Image Scan
+  docker-build-publish:
+    name: Build, Scan & Publish
+    runs-on: ubuntu-latest
+    needs: [dependency-scanning, codeql-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image
+        run: docker build -t $IMAGE_NAME:${{ github.sha }} .
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy'
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push to Docker Hub
+        run: |
+          FULL=${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME
+          docker tag $IMAGE_NAME:${{ github.sha }} $FULL:${{ github.sha }}
+          docker tag $IMAGE_NAME:${{ github.sha }} $FULL:latest
+          docker push $FULL:${{ github.sha }}
+          docker push $FULL:latest
+
+  # STEP 3: Deploy
+  deploy:
+    name: Send Deployment signal
+    runs-on: ubuntu-latest
+    needs: docker-build-publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Send Webhook
+        run: |
+          curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}" \
+          "${{ secrets.WEBHOOK_URL }}"
