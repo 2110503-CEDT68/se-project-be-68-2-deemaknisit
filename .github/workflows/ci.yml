@@ -29,7 +29,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: 'npm'
       - run: npm ci
       - run: npm run test
 
@@ -41,7 +40,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3
         continue-on-error: true
         with:
           path: ./
@@ -100,8 +99,8 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
-      - name: Depcheck
-        uses: dependency-check/Dependency-Check_Action@main
+      - name: OWASP Depcheck
+        uses: dependency-check/Dependency-Check_Action@v5.1.0
         continue-on-error: true
         id: Depcheck
         with:
@@ -130,7 +129,7 @@ jobs:
       - name: Build image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} .
       - name: Trivy Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v1
         continue-on-error: true
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
