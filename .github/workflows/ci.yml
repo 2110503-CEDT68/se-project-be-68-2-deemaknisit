@@ -24,8 +24,8 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: 'npm'
@@ -36,7 +36,7 @@ jobs:
   secret-scanning:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Run TruffleHog
@@ -59,11 +59,11 @@ jobs:
     needs: secret-scanning
     if: ${{ !cancelled() }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v3.1.0
+        uses: SonarSource/sonarqube-scan-action@v4.1.0
         continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -76,14 +76,14 @@ jobs:
       matrix:
         language: [ 'javascript' ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   # GATE#2: Dependency scanning
   dependency-scanning:
@@ -91,8 +91,8 @@ jobs:
     needs: [sast-scan, test]
     if: ${{ !cancelled() }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
       - run: npm ci
@@ -108,7 +108,7 @@ jobs:
           args: '--failOnCVSS 7.0 --enableRetired'
       - name: Upload Depcheck SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: reports/dependency-check-report.sarif
           category: dependency-check
@@ -120,9 +120,9 @@ jobs:
     needs: [dependency-scanning, codeql-scan]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} .
       - name: Trivy Scan
@@ -135,12 +135,12 @@ jobs:
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy'
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
