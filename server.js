@@ -5,7 +5,7 @@ const connectDB = require('./config/db');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('@exortek/express-mongo-sanitize');
 const helmet = require('helmet');
-const { xss } = require('express-xss-sanitizer');
+const xss = require('xss');
 const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
 const cors = require('cors');
@@ -38,7 +38,25 @@ app.use(express.json());                          // JSON Parsing
 app.use(cors());                                  // CORS for frontend requests
 app.use(helmet());                                // Security Headers 
 app.use(mongoSanitize());                         // Sanitize data
-app.use(xss());                                   // Prevent XSS attacks
+
+// Custom XSS Sanitizer Middleware
+const sanitize = (obj) => {
+    if (typeof obj === 'string') return xss(obj);
+    if (obj !== null && typeof obj === 'object') {
+        Object.keys(obj).forEach(key => {
+            obj[key] = sanitize(obj[key]);
+        });
+    }
+    return obj;
+};
+
+app.use((req, res, next) => {
+    if (req.body) req.body = sanitize(req.body);
+    if (req.query) req.query = sanitize(req.query);
+    if (req.params) req.params = sanitize(req.params);
+    next();
+});
+
 app.use(limiter);                                 // Rate Limiting
 app.use(hpp());                                   // Prevent parameter pollution
 app.use(cookieParser());                          // Cookie parser
