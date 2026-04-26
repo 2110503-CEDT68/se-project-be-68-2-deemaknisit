@@ -19,10 +19,13 @@ exports.getCars = async (req, res, next) => {
     let queryStr = JSON.stringify(reqQuery);
     queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
 
-    // Finding resource & Populate provider
+    // Finding resource & Populate provider and wishlist status
     query = Car.find(JSON.parse(queryStr)).populate({
         path: 'provider',
         select: 'name address tel'
+    }).populate({
+        path: 'isWishlisted',
+        match: { userId: req.user ? req.user.id : null }
     });
 
     // Select Fields
@@ -81,6 +84,9 @@ exports.getCar = async (req, res, next) => {
         const car = await Car.findById(req.params.id).populate({
             path: 'provider',
             select: 'name address tel'
+        }).populate({
+            path: 'isWishlisted',
+            match: { userId: req.user ? req.user.id : null }
         });
 
         if (!car) {

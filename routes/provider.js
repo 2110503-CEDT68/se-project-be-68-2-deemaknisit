@@ -13,7 +13,7 @@ const bookingRouter = require('./booking');
 
 const router = express.Router();
 
-const { protect, optionalProtect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalProtect } = require('../middleware/auth');
 
 /**
  * @swagger

@@ -9,17 +9,7 @@ const {
 
 const router = express.Router();
 
-const { protect, authorize } = require('../middleware/auth');
-
-// Middleware to conditionally require authentication
-const optionalProtect = (req, res, next) => {
-    // Allow unauthenticated access only for ?all=true (public reviews)
-    if (req.query.all === 'true') {
-        return next();
-    }
-    // Otherwise require authentication
-    protect(req, res, next);
-};
+const { protect, authorize, optionalProtect } = require('../middleware/auth');
 
 router.route('/')
     .post(protect, authorize('user', 'admin'), addReview)

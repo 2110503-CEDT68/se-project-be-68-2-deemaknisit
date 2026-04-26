@@ -13,7 +13,7 @@ const bookingRouter = require('./booking');
 
 const router = express.Router();
 
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalProtect } = require('../middleware/auth');
 
 /**
  * @swagger
@@ -83,7 +83,7 @@ router.route('/:carId/reviews').get(getReviews);
  *         description: Forbidden
  */
 router.route('/')
-    .get(getCars)
+    .get(optionalProtect, getCars)
     .post(protect, authorize('admin'), createCar);
 
 /**
@@ -154,7 +154,7 @@ router.route('/')
  *         description: Car not found
  */
 router.route('/:id')
-    .get(getCar)
+    .get(optionalProtect, getCar)
     .put(protect, authorize('admin'), updateCar)
     .delete(protect, authorize('admin'), deleteCar);
 

@@ -277,6 +277,54 @@
       ]
     },
     {
+      "name": "Create Car For Wishlist",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ADMIN_TOKEN}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"licensePlate\": \"WISH-{{USER_EMAIL}}\",\n  \"brand\": \"Tesla\",\n  \"model\": \"Model Wish\",\n  \"year\": 2024,\n  \"color\": \"Silver\",\n  \"transmission\": \"Automatic\",\n  \"fuelType\": \"Electric\",\n  \"rentPrice\": 5000,\n  \"provider\": \"{{PROVIDER_ID}}\"\n}"
+        },
+        "url": {
+          "raw": "{{URL}}/api/cars",
+          "host": [
+            "{{URL}}"
+          ],
+          "path": [
+            "api",
+            "cars"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Car created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('CAR_ID', pm.response.json().data._id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Unauthorized Wishlist Request",
       "request": {
         "method": "POST",
@@ -288,7 +336,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"providerId\": \"{{PROVIDER_ID}}\"\n}"
+          "raw": "{\n  \"carId\": \"{{CAR_ID}}\"\n}"
         },
         "url": {
           "raw": "{{URL}}/api/wishlist",
@@ -335,7 +383,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"providerId\": \"invalid-provider-id\"\n}"
+          "raw": "{\n  \"carId\": \"invalid-car-id\"\n}"
         },
         "url": {
           "raw": "{{URL}}/api/wishlist",
@@ -354,14 +402,14 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('Returns 400 for invalid providerId', () => pm.response.to.have.status(400));"
+              "pm.test('Returns 400 for invalid carId', () => pm.response.to.have.status(400));"
             ]
           }
         }
       ]
     },
     {
-      "name": "Wishlist Non-existing Provider",
+      "name": "Wishlist Non-existing Car",
       "request": {
         "auth": {
           "type": "bearer",
@@ -382,7 +430,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"providerId\": \"507f1f77bcf86cd799439011\"\n}"
+          "raw": "{\n  \"carId\": \"507f1f77bcf86cd799439011\"\n}"
         },
         "url": {
           "raw": "{{URL}}/api/wishlist",
@@ -401,7 +449,7 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('Returns 404 for missing provider', () => pm.response.to.have.status(404));"
+              "pm.test('Returns 404 for missing car', () => pm.response.to.have.status(404));"
             ]
           }
         }
@@ -429,7 +477,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"providerId\": \"{{PROVIDER_ID}}\"\n}"
+          "raw": "{\n  \"carId\": \"{{CAR_ID}}\"\n}"
         },
         "url": {
           "raw": "{{URL}}/api/wishlist",
@@ -455,7 +503,7 @@
       ]
     },
     {
-      "name": "Add Duplicate Wishlist Provider",
+      "name": "Add Duplicate Wishlist Car",
       "request": {
         "auth": {
           "type": "bearer",
@@ -476,7 +524,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"providerId\": \"{{PROVIDER_ID}}\"\n}"
+          "raw": "{\n  \"carId\": \"{{CAR_ID}}\"\n}"
         },
         "url": {
           "raw": "{{URL}}/api/wishlist",

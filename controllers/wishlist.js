@@ -1,45 +1,45 @@
 const mongoose = require('mongoose');
 const Wishlist = require('../models/Wishlist');
-const Provider = require('../models/Provider');
+const Car = require('../models/Car');
 
-// @desc    Add provider to wishlist
+// @desc    Add car to wishlist
 // @route   POST /api/wishlist
 // @access  Private
 exports.addWishlistItem = async (req, res, next) => {
     try {
-        const { providerId } = req.body;
+        const { carId } = req.body;
 
-        if (!providerId || !mongoose.Types.ObjectId.isValid(providerId)) {
+        if (!carId || !mongoose.Types.ObjectId.isValid(carId)) {
             return res.status(400).json({
                 success: false,
-                message: 'providerId is required and must be a valid provider id'
+                message: 'carId is required and must be a valid car id'
             });
         }
 
-        const provider = await Provider.findById(providerId);
+        const car = await Car.findById(carId);
 
-        if (!provider) {
+        if (!car) {
             return res.status(404).json({
                 success: false,
-                message: `Provider not found with id of ${providerId}`
+                message: `Car not found with id of ${carId}`
             });
         }
 
         const existingWishlistItem = await Wishlist.findOne({
             userId: req.user.id,
-            providerId
+            carId
         });
 
         if (existingWishlistItem) {
             return res.status(409).json({
                 success: false,
-                message: 'Provider is already in your wishlist'
+                message: 'Car is already in your wishlist'
             });
         }
 
         const wishlistItem = await Wishlist.create({
             userId: req.user.id,
-            providerId
+            carId
         });
 
         res.status(201).json({
@@ -50,7 +50,7 @@ exports.addWishlistItem = async (req, res, next) => {
         if (err.code === 11000) {
             return res.status(409).json({
                 success: false,
-                message: 'Provider is already in your wishlist'
+                message: 'Car is already in your wishlist'
             });
         }
 
@@ -58,14 +58,32 @@ exports.addWishlistItem = async (req, res, next) => {
     }
 };
 
+// @desc    Get user wishlist
+// @route   GET /api/wishlist
+// @access  Private
 exports.getWishlist = async (req, res, next) => {
     try {
-        const wishlist = await Wishlist.find({ userId: req.user.id }).populate('providerId');
+        const wishlistItems = await Wishlist.find({ userId: req.user.id }).populate({
+            path: 'carId',
+            populate: {
+                path: 'provider',
+                select: 'name address tel'
+            }
+        });
+
+        // Extract the cars and add the wishlist item ID to each car object
+        const wishlistedCars = wishlistItems
+            .filter(item => item.carId) // Ensure car still exists
+            .map(item => {
+                const car = item.carId.toObject();
+                car.wishlistItemId = item._id; // Add this so frontend can delete easily
+                return car;
+            });
 
         res.status(200).json({
             success: true,
-            count: wishlist.length,
-            data: wishlist
+            count: wishlistedCars.length,
+            data: wishlistedCars
         });
     } catch (err) {
         next(err);
