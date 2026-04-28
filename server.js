@@ -31,6 +31,7 @@ const limiter = rateLimit({
 });
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Middleware
 app.set('query parser', 'extended');              // Parse query strings as objects
@@ -39,6 +40,18 @@ app.use(cors());                                  // CORS for frontend requests
 
 // Serve Swagger UI with CDN assets so Vercel does not need to proxy local static bundles.
 app.get(['/api-docs', '/api-docs/'], (req, res) => {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const serverUrl = `${protocol}://${req.get('host')}`;
+        const swaggerSpecForRequest = {
+            ...swaggerSpec,
+            servers: [
+                {
+                    url: serverUrl,
+                    description: 'Current server'
+                }
+            ]
+        };
+
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(`<!doctype html>
 <html lang="en">
@@ -59,7 +72,7 @@ app.get(['/api-docs', '/api-docs/'], (req, res) => {
         <script>
             window.onload = () => {
                 window.ui = SwaggerUIBundle({
-                    spec: ${JSON.stringify(swaggerSpec)},
+                    spec: ${JSON.stringify(swaggerSpecForRequest)},
                     dom_id: '#swagger-ui',
                     deepLinking: true,
                     presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
