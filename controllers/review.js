@@ -35,11 +35,10 @@ exports.addReview = async (req, res, next) => {
         }
 
         // Check if booking is completed
-        const now = new Date();
-        if (booking.returnDate > now && req.user.role !== 'admin') {
+        if (booking.status !== 'complete' && req.user.role !== 'admin') {
             return res.status(400).json({
                 success: false,
-                message: 'No completed booking'
+                message: 'Booking must be completed first'
             });
         }
 
