@@ -36,6 +36,8 @@ const app = express();
 app.set('query parser', 'extended');              // Parse query strings as objects
 app.use(express.json());                          // JSON Parsing
 app.use(cors());                                  // CORS for frontend requests
+// Swagger UI must be mounted before helmet CSP headers to avoid a blank page in production
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(helmet());                                // Security Headers 
 app.use(mongoSanitize());                         // Sanitize data
 
@@ -60,9 +62,6 @@ app.use((req, res, next) => {
 app.use(limiter);                                 // Rate Limiting
 app.use(hpp());                                   // Prevent parameter pollution
 app.use(cookieParser());                          // Cookie parser
-
-// Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Define routes
 app.use('/api/auth', authRoutes);
