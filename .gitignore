@@ -3,6 +3,8 @@ node_modules/*
 # ignore config file
 config/config.env
 
+coverage
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
