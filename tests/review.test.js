@@ -33,6 +33,12 @@ describe('Review Controller (Integration)', () => {
             req.body = { bookingId: booking._id.toString(), rating: 5, comment: 'Good' };
             await addReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(201);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, data: expect.objectContaining({ rating: 5, comment: 'Good' }) }));
+            const review = await Review.findOne({ bookingId: booking._id });
+            expect(review).not.toBeNull();
+            expect(review.rating).toBe(5);
+            expect(review.comment).toBe('Good');
+            expect(review.userId.toString()).toBe(user._id.toString());
         });
 
         it('should return 400 for empty comment', async () => {
@@ -40,6 +46,7 @@ describe('Review Controller (Integration)', () => {
             req.body = { comment: ' ' };
             await addReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
         });
 
         it('should return 404 for missing booking', async () => {
@@ -47,6 +54,7 @@ describe('Review Controller (Integration)', () => {
             req.body = { bookingId: new mongoose.Types.ObjectId().toString(), comment: 't', rating: 5 };
             await addReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
         });
 
         it('should return 401 for non-owner', async () => {
@@ -55,6 +63,7 @@ describe('Review Controller (Integration)', () => {
             req.body = { bookingId: booking._id.toString(), rating: 5, comment: 't' };
             await addReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(401);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
         });
 
         it('should return 400 for duplicate review', async () => {
@@ -63,6 +72,9 @@ describe('Review Controller (Integration)', () => {
             req.body = { bookingId: booking._id.toString(), rating: 5, comment: 't' };
             await addReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+            const count = await Review.countDocuments({ bookingId: booking._id });
+            expect(count).toBe(1);
         });
 
         it('should return 400 for incomplete booking', async () => {
@@ -71,6 +83,7 @@ describe('Review Controller (Integration)', () => {
             req.body = { bookingId: pendingBooking._id.toString(), rating: 5, comment: 'Good' };
             await addReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
         });
 
         it('should handle catch block error', async () => {
@@ -92,29 +105,54 @@ describe('Review Controller (Integration)', () => {
             req.params.carId = car._id.toString();
             await getReviews(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                count: expect.any(Number),
+                data: expect.any(Array)
+            }));
         });
 
         it('should handle query all/guest and default sort', async () => {
             req.query = { all: 'true' };
             await getReviews(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                count: expect.any(Number),
+                data: expect.any(Array)
+            }));
 
             req.user = null;
             req.query = {};
             await getReviews(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                count: expect.any(Number),
+                data: expect.any(Array)
+            }));
         });
 
         it('should handle user specific reviews', async () => {
             req.user = user;
             await getReviews(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                count: expect.any(Number),
+                data: expect.any(Array)
+            }));
         });
 
         it('should handle select and sort query', async () => {
             req.query = { select: 'comment', sort: 'rating' };
             await getReviews(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                count: expect.any(Number),
+                data: expect.any(Array)
+            }));
         });
 
         it('should handle pagination next and prev links', async () => {
@@ -161,6 +199,10 @@ describe('Review Controller (Integration)', () => {
             req.user = admin;
             await getReviewById(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                data: expect.objectContaining({ _id: r._id })
+            }));
         });
 
         it('should handle catch block error', async () => {
@@ -177,15 +219,18 @@ describe('Review Controller (Integration)', () => {
             req.params.reviewId = 'invalid';
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             req.params.reviewId = new mongoose.Types.ObjectId().toString();
             req.body = {};
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             req.body = { invalid: 1 };
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             const r = await Review.create({ bookingId: booking._id, userId: user._id, providerId: provider._id, rating: 5, comment: 't' });
             req.params.reviewId = r._id.toString();
@@ -193,16 +238,21 @@ describe('Review Controller (Integration)', () => {
             req.body = { comment: '' };
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             req.params.reviewId = new mongoose.Types.ObjectId().toString();
             req.body = { comment: 'v' };
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             req.params.reviewId = r._id.toString();
             req.user = await User.create({ name: 'O', email: `o${Math.random()}@t.com`, password: 'password123', telephone: '0811111112' });
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(403);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+            const checkR = await Review.findById(r._id);
+            expect(checkR.rating).toBe(5);
         });
 
         it('should update successfully with partial fields', async () => {
@@ -212,6 +262,9 @@ describe('Review Controller (Integration)', () => {
             req.body = { rating: 2 }; // Only one field to hit the else branch in the allowedFields loop
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+            const checkR = await Review.findById(r._id);
+            expect(checkR.rating).toBe(2);
         });
 
         it('should update successfully', async () => {
@@ -221,6 +274,10 @@ describe('Review Controller (Integration)', () => {
             req.body = { rating: 1, comment: 'v' };
             await updateReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+            const checkR = await Review.findById(r._id);
+            expect(checkR.rating).toBe(1);
+            expect(checkR.comment).toBe('v');
         });
 
         it('should handle ValidationError/CastError and next(err)', async () => {
@@ -250,16 +307,21 @@ describe('Review Controller (Integration)', () => {
             req.params.reviewId = 'invalid';
             await deleteReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             req.params.reviewId = new mongoose.Types.ObjectId().toString();
             await deleteReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             const r = await Review.create({ bookingId: booking._id, userId: user._id, providerId: provider._id, rating: 5, comment: 't' });
             req.params.reviewId = r._id.toString();
             req.user = await User.create({ name: 'O', email: `o${Math.random()}@t.com`, password: 'password123', telephone: '0811111112' });
             await deleteReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(403);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+            const checkR = await Review.findById(r._id);
+            expect(checkR).not.toBeNull();
         });
 
         it('should delete successfully and handle catch block', async () => {
@@ -268,6 +330,9 @@ describe('Review Controller (Integration)', () => {
             req.user = admin;
             await deleteReview(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+            const checkR = await Review.findById(r._id);
+            expect(checkR).toBeNull();
 
             jest.spyOn(Review, 'findById').mockRejectedValueOnce(new Error());
             await deleteReview(req, res, next);

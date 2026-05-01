@@ -31,20 +31,28 @@ describe('Wishlist Controller (Integration)', () => {
             req.body = { carId: 'invalid' };
             await addWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             // Car not found
             req.body = { carId: new mongoose.Types.ObjectId().toString() };
             await addWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             // Success
             req.body = { carId: car._id.toString() };
             await addWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(201);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+            const dbCheck = await Wishlist.findOne({ userId: user._id, carId: car._id });
+            expect(dbCheck).not.toBeNull();
 
             // Manual duplicate check
             await addWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(409);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+            const count = await Wishlist.countDocuments({ userId: user._id, carId: car._id });
+            expect(count).toBe(1);
         });
 
         it('should handle MongoDB duplicate key error (11000)', async () => {
@@ -57,6 +65,7 @@ describe('Wishlist Controller (Integration)', () => {
             
             await addWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(409);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
             spy.mockRestore();
         });
 
@@ -66,6 +75,7 @@ describe('Wishlist Controller (Integration)', () => {
             req.body = { carId: 'invalid' }; // Trigger invalid ID check instead of DB
             await addWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             jest.spyOn(Wishlist, 'create').mockRejectedValueOnce(new Error('Other'));
             req.body = { carId: car._id.toString() };
@@ -166,17 +176,24 @@ describe('Wishlist Controller (Integration)', () => {
             req.params.id = w._id.toString();
             await deleteWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(401);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+            let checkW = await Wishlist.findById(w._id);
+            expect(checkW).not.toBeNull();
 
             // Not found
             req.user = user;
             req.params.id = new mongoose.Types.ObjectId().toString();
             await deleteWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
 
             // Success (Owner)
             req.params.id = w._id.toString();
             await deleteWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+            checkW = await Wishlist.findById(w._id);
+            expect(checkW).toBeNull();
         });
 
         it('should handle admin delete', async () => {
@@ -185,6 +202,9 @@ describe('Wishlist Controller (Integration)', () => {
             req.params.id = w._id.toString();
             await deleteWishlist(req, res, next);
             expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+            const checkW = await Wishlist.findById(w._id);
+            expect(checkW).toBeNull();
         });
 
         it('should handle catch block', async () => {
